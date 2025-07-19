@@ -1,28 +1,10 @@
-#include "imgui.h"
-#include "raylib.h"
-#include "rlImGui.h"
+#include <memory>
+
+#include "Game.h"
+
 
 int main()
 {
-    InitWindow(800, 450, "raylib [core] example - basic window");
-
-    rlImGuiSetup(true);
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-
-    while (!WindowShouldClose())
-    {
-        BeginDrawing();
-        rlImGuiBegin();
-
-        ClearBackground(RAYWHITE);
-        DrawText("Congrats! You created your first window!", 190, 200, 20, LIGHTGRAY);
-
-        rlImGuiEnd();
-        EndDrawing();
-    }
-
-    rlImGuiShutdown();
-    CloseWindow();
+    std::unique_ptr<Game> game = std::make_unique<Game>();
     return 0;
 }
