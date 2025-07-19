@@ -7,6 +7,7 @@
 #include "raylib.h"
 #include "rlImGui.h"
 #include "systems/FallingSandsSystem.h"
+#include <algorithm>>
 
 Game::Game(): currentGameState(Uninitialized), windowSettings()
 {
