@@ -1,6 +1,13 @@
-﻿add_executable(${PROJECT_NAME} main.cpp
+﻿add_executable(${PROJECT_NAME}
+        main.cpp
         Game.cpp
-        Game.h)
+        Game.h
+        systems/System.h
+        systems/SystemManager.h
+        systems/FallingSandsSystem.cpp
+        systems/FallingSandsSystem.h
+
+)
 target_sources(${PROJECT_NAME} PRIVATE main.cpp)
 target_include_directories(${PROJECT_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
