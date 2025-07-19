@@ -1,0 +1,6 @@
+[submodule "vendored/raylib-cpp"]
+	path = vendored/raylib-cpp
+	url = https://github.com/RobLoach/raylib-cpp.git
+[submodule "vendored/raylib"]
+	path = vendored/raylib
+	url = https://github.com/raysan5/raylib.git
