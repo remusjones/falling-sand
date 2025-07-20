@@ -32,15 +32,15 @@ void Game::Setup()
 
     systemManager = std::make_unique<SystemManager>();
 
-    int32_t worldSizeX = 200;
-    int32_t worldSizeY = 112;
+    int32_t worldSizeX = 800/3;
+    int32_t worldSizeY = 448/3;
 
     fallingSandsSystem = systemManager->RegisterSystem<FallingSandsSystem>("falling sands", worldSizeX, worldSizeY);
 
     // Move to renderer
     renderTexture = LoadRenderTexture(worldSizeX, worldSizeY);
     BeginTextureMode(renderTexture);
-    ClearBackground(RAYWHITE);
+    ClearBackground(BLACK);
     EndTextureMode();
 
     systemManager->Init();
@@ -51,8 +51,15 @@ void Game::Update()
     while (!WindowShouldClose() && currentGameState != Exiting)
     {
         Vector2 mousePos = GetMousePosition();
-        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || (GetGestureDetected() == GESTURE_DRAG))
+
+        // todo: Move to imgui pallet
+        int mouseButtonInput = -1;
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) mouseButtonInput = 0;
+        if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) mouseButtonInput = 1;
+
+        if (mouseButtonInput != -1)
         {
+            CellType selectedCellType = mouseButtonInput > 0 ? CellType::Water : CellType::Sand;
             float cellWidth = static_cast<float>(windowSettings.windowWidth) /  static_cast<float>(fallingSandsSystem->GetWidth());
             float cellHeight = static_cast<float>(windowSettings.windowHeight) / static_cast<float>(fallingSandsSystem->GetHeight());
 
@@ -60,7 +67,7 @@ void Game::Update()
             int cellY = fallingSandsSystem->GetClampedHeight(static_cast<int>(mousePos.y / cellHeight));
 
             auto& grid = fallingSandsSystem->GetGrid();
-            grid[cellY * fallingSandsSystem->GetWidth() + cellX].cellType = CellType::Sand;
+            grid[cellY * fallingSandsSystem->GetWidth() + cellX].cellType = selectedCellType;
         }
 
         systemManager->Update(GetFrameTime());
@@ -79,6 +86,8 @@ void Game::Update()
         Rectangle dest = { 0, 0, static_cast<float>(screenWidth), static_cast<float>(screenHeight) };
         Vector2 origin = { 0, 0 };
         DrawTexturePro(renderTexture.texture, source, dest, origin, 0.0f, WHITE);
+
+        DrawFPS(0,0);
 
         rlImGuiEnd();
         EndDrawing();
@@ -101,6 +110,11 @@ Color GetCellTypeColor(const CellType& cellType)
         {
             return CLITERAL(Color){ 225,191,146, 255 };
         }
+        case CellType::Water:
+        {
+            return CLITERAL(Color){ 111, 122, 252, 255 };
+        }
+        break;
         default: return BLACK;
     }
 }
@@ -118,6 +132,8 @@ void Game::TempMakeFallingSandsImage()
         for (int y = 0; y < height; y++)
         {
             Cell& cell = grid[y * width + x];
+            if (cell.isDirty == false) continue;
+
             Color cellColor = GetCellTypeColor(cell.cellType);
 
             // spatial hash

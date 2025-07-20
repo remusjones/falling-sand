@@ -9,15 +9,17 @@
 
 #include "System.h"
 
-enum class CellType
+enum class CellType : uint8_t
 {
-    Null,
-    Sand
+    Null    = 0,
+    Sand    = 1,
+    Water   = 2
 };
 
 struct Cell
 {
     CellType cellType;
+    bool isDirty;
 };
 
 class FallingSandsSystem : public System
@@ -41,4 +43,5 @@ private:
     int32_t width;
     int32_t height;
     std::vector<Cell> grid;
+    std::vector<Cell> backGrid;
 };

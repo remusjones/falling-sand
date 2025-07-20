@@ -1,13 +1,13 @@
 ﻿//
 // Created by Remus on 19/07/2025.
 //
-
 #include "FallingSandsSystem.h"
-
 #include <algorithm>
 
+#include "GameUtils.h"
+
 FallingSandsSystem::FallingSandsSystem(const std::string_view& name, const int32_t& worldWidth, const int32_t& worldHeight)
-    : System(name), width(worldWidth), height(worldHeight), grid(worldWidth * worldHeight)
+    : System(name), width(worldWidth), height(worldHeight), grid(worldWidth * worldHeight), backGrid(worldWidth * worldHeight)
 {
 
 }
@@ -16,36 +16,84 @@ void FallingSandsSystem::Init()
 {
 }
 
-void FallingSandsSystem::Update(const float &deltaTime)
+void FallingSandsSystem::Update(const float& deltaTime)
 {
+    const Vector2i extents = {width, height};
+    backGrid = grid;
+
+
+    auto trySwapCell = [&](const int32_t& targetIndex, const int& fromIndex)  {
+
+        Cell& cellFrom = backGrid[fromIndex];
+        Cell& cellTo = backGrid[targetIndex];
+
+        if (cellTo.isDirty || cellFrom.isDirty) return false;
+
+        if (GameUtils::CanDisplace(cellFrom.cellType, cellTo.cellType))
+        {
+            std::swap(cellFrom, cellTo);
+            cellTo.isDirty = true;
+            cellFrom.isDirty = true;
+
+            return true;
+        }
+        return false;
+    };
+
     for (int y = height - 1; y >= 0; y--)
     {
         for (int x = 0; x < width; x++)
         {
             int32_t currentCellIndex = y * width + x;
             Cell& cell = grid[currentCellIndex];
+            backGrid[currentCellIndex].isDirty = false;
+
             switch (cell.cellType)
             {
                 case CellType::Sand:
                 {
-                    if (y + 1 >= height) break; // ignore cell if its on the floor
-
-                    int32_t targetBelowY = GetClampedHeight(y + 1);
-
-                    auto trySwapNull = [&](const int& nx)  {
-                        int32_t targetCell = targetBelowY * width + GetClampedWidth(nx);
-                        if (grid[targetCell].cellType == CellType::Null)
-                        {
-                            std::swap(grid[targetCell], grid[currentCellIndex]);
-                            return true;
-                        }
-                        return false;
+                    constexpr Direction validMovementDirection[] = {
+                        Direction::DOWN,
+                        Direction::DOWN_LEFT,
+                        Direction::DOWN_RIGHT
                     };
 
-                    // Check below, and then left/right
-                    if (trySwapNull(x)) break;
-                    if (trySwapNull(x - 1)) break;
-                    if (trySwapNull(x + 1)) break;
+                    for (Direction currentDirection : validMovementDirection)
+                    {
+                        int32_t neighborIdx;
+                        if (GameUtils::GetNeighbourIndex(currentCellIndex, currentDirection, extents, neighborIdx))
+                        {
+                            if (trySwapCell(neighborIdx, currentCellIndex))
+                            {
+                                break;
+                            }
+                        }
+                    }
+
+                    break;
+                }
+
+                case CellType::Water:
+                {
+                    constexpr Direction validMovementDirection[] = {
+                        Direction::DOWN,
+                        Direction::DOWN_LEFT,
+                        Direction::DOWN_RIGHT,
+                        Direction::RIGHT,
+                        Direction::LEFT,
+                    };
+
+                    for (Direction currentDirection : validMovementDirection)
+                    {
+                        int32_t neighborIdx;
+                        if (GameUtils::GetNeighbourIndex(currentCellIndex, currentDirection, extents, neighborIdx))
+                        {
+                            if (trySwapCell(neighborIdx, currentCellIndex))
+                            {
+                                break;
+                            }
+                        }
+                    }
 
                     break;
                 }
@@ -53,6 +101,8 @@ void FallingSandsSystem::Update(const float &deltaTime)
             }
         }
     }
+
+    std::swap(backGrid, grid);
 }
 
 void FallingSandsSystem::Shutdown()
