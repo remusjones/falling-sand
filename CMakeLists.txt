@@ -8,3 +8,4 @@ set(BUILD_SHARED_LIBS OFF)
 
 add_subdirectory(vendored)
 add_subdirectory(src)
+

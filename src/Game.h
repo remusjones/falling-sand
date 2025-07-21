@@ -11,13 +11,6 @@
 
 class FallingSandsSystem;
 
-enum GameState : int
-{
-    Uninitialized,
-    Running,
-    Exiting
-};
-
 struct WindowSettings
 {
     int windowWidth;
@@ -35,17 +28,15 @@ private:
     void Update();
     void Shutdown();
 
-    // will move to rendering class
-    void TempMakeFallingSandsImage();
+    void DrawSim();
 
 private:
-    GameState currentGameState;
     WindowSettings windowSettings;
-
     std::unique_ptr<SystemManager> systemManager;
     FallingSandsSystem* fallingSandsSystem;
 
-
-    // temp
-    RenderTexture2D renderTexture;
+    // Rendering
+    std::vector<Color> cellPixels;
+    Texture2D gridTexture;
+    Shader shader;
 };

@@ -7,10 +7,13 @@
 #include "raylib.h"
 #include "rlImGui.h"
 #include "systems/FallingSandsSystem.h"
-#include <algorithm>
 
-Game::Game(): currentGameState(Uninitialized), windowSettings()
+Game::Game() : cellPixels(), gridTexture(), shader()
 {
+    windowSettings.windowWidth = 800;
+    windowSettings.windowHeight = 450;
+    windowSettings.windowTitle = "falling-sand";
+
     Setup();
     Update();
     Shutdown();
@@ -18,37 +21,54 @@ Game::Game(): currentGameState(Uninitialized), windowSettings()
 
 void Game::Setup()
 {
-    windowSettings.windowWidth = 800;
-    windowSettings.windowHeight = 450;
-    windowSettings.windowTitle = "falling-sand";
-
     InitWindow(windowSettings.windowWidth, windowSettings.windowHeight, windowSettings.windowTitle.c_str());
 
     rlImGuiSetup(true);
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-    currentGameState = Running;
-
     systemManager = std::make_unique<SystemManager>();
 
     int32_t worldSizeX = 800/3;
     int32_t worldSizeY = 448/3;
 
-    fallingSandsSystem = systemManager->RegisterSystem<FallingSandsSystem>("falling sands", worldSizeX, worldSizeY);
+   cellPixels = std::vector<Color>(worldSizeX * worldSizeY);
 
-    // Move to renderer
-    renderTexture = LoadRenderTexture(worldSizeX, worldSizeY);
-    BeginTextureMode(renderTexture);
-    ClearBackground(BLACK);
-    EndTextureMode();
+    Image image = {
+        .data = cellPixels.data(),
+        .width = worldSizeX,
+        .height = worldSizeY,
+        .mipmaps = 1,
+        .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8
+    };
+
+    gridTexture = LoadTextureFromImage(image);
+    shader = LoadShader(0, "resources/shaders/fallingSand_fs.glsl");
+
+    fallingSandsSystem = systemManager->RegisterSystem<FallingSandsSystem>("falling sands", worldSizeX, worldSizeY);
 
     systemManager->Init();
 }
 
+Color GetCellTypeColor(const CellType& cellType)
+{
+    switch (cellType)
+    {
+        case CellType::Sand:
+        {
+            return CLITERAL(Color){ 225,191,146, 255 };
+        }
+        case CellType::Water:
+        {
+            return CLITERAL(Color){ 111, 122, 252, 255 };
+        }
+        default: return BLACK;
+    }
+}
+
 void Game::Update()
 {
-    while (!WindowShouldClose() && currentGameState != Exiting)
+    while (!WindowShouldClose())
     {
         Vector2 mousePos = GetMousePosition();
 
@@ -72,27 +92,18 @@ void Game::Update()
 
         systemManager->Update(GetFrameTime());
 
-        // todo: Move rendering funcs to renderer class
         BeginDrawing();
         rlImGuiBegin();
 
         ClearBackground(RAYWHITE);
 
-        TempMakeFallingSandsImage();
-
-        int screenWidth = GetScreenWidth();
-        int screenHeight = GetScreenHeight();
-        Rectangle source = { 0, 0, static_cast<float>(renderTexture.texture.width), static_cast<float>(-renderTexture.texture.height) };
-        Rectangle dest = { 0, 0, static_cast<float>(screenWidth), static_cast<float>(screenHeight) };
-        Vector2 origin = { 0, 0 };
-        DrawTexturePro(renderTexture.texture, source, dest, origin, 0.0f, WHITE);
-
+        DrawSim();
         DrawFPS(0,0);
 
         rlImGuiEnd();
         EndDrawing();
     }
-    UnloadRenderTexture(renderTexture);
+    UnloadTexture(gridTexture);
 }
 
 void Game::Shutdown()
@@ -102,53 +113,33 @@ void Game::Shutdown()
     CloseWindow();
 }
 
-Color GetCellTypeColor(const CellType& cellType)
+void Game::DrawSim()
 {
-    switch (cellType)
+    BeginShaderMode(shader);
+
+    const int width = fallingSandsSystem->GetWidth();
+    const int height = fallingSandsSystem->GetHeight();
+    const std::vector<Cell>& grid = fallingSandsSystem->GetGrid();
+
+    if (cellPixels.size() != width * height)
+        cellPixels.resize(width * height);
+
+    for (int i = 0; i < width * height; ++i)
     {
-        case CellType::Sand:
-        {
-            return CLITERAL(Color){ 225,191,146, 255 };
-        }
-        case CellType::Water:
-        {
-            return CLITERAL(Color){ 111, 122, 252, 255 };
-        }
-        break;
-        default: return BLACK;
+        cellPixels[i] = GetCellTypeColor(grid[i].cellType);
     }
-}
 
-void Game::TempMakeFallingSandsImage()
-{
-    // todo: Temp function, move to renderer class
-    BeginTextureMode(renderTexture);
-    std::vector<Cell>& grid = fallingSandsSystem->GetGrid();
-    const int32_t width = fallingSandsSystem->GetWidth();
-    const int32_t height = fallingSandsSystem->GetHeight();
+    UpdateTexture(gridTexture, cellPixels.data());
 
-    for (int x = 0; x < width; x++)
-    {
-        for (int y = 0; y < height; y++)
-        {
-            Cell& cell = grid[y * width + x];
-            if (cell.isDirty == false) continue;
+    float resolution[2] = { static_cast<float>(width), static_cast<float>(height) };
+    SetShaderValue(shader, GetShaderLocation(shader, "resolution"), resolution, SHADER_UNIFORM_VEC2);
+    SetShaderValueTexture(shader, GetShaderLocation(shader, "cellTex"), gridTexture);
 
-            Color cellColor = GetCellTypeColor(cell.cellType);
+    Rectangle src = { 0, 0, static_cast<float>(width),              static_cast<float>(height) };
+    Rectangle dst = { 0, 0, static_cast<float>(GetScreenWidth()),   static_cast<float>(GetScreenHeight()) };
+    Vector2 origin = { 0, 0 };
 
-            // spatial hash
-            int noise = ((x * 73856093) ^ (y * 19349663)) & 0xFF;
-            int offset = noise % 11 - 10; // range -+ 10
+    DrawTexturePro(gridTexture, src, dst, origin, 0.0f, WHITE);
 
-            Color noisyColor = {
-                static_cast<unsigned char>(std::clamp(cellColor.r + offset, 0, 255)),
-                static_cast<unsigned char>(std::clamp(cellColor.g + offset, 0, 255)),
-                static_cast<unsigned char>(std::clamp(cellColor.b + offset, 0, 255)),
-                cellColor.a
-            };
-
-            DrawPixel(x, y, noisyColor);
-        }
-    }
-    EndTextureMode();
+    EndShaderMode();
 }
