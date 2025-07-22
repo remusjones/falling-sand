@@ -4,22 +4,15 @@
 
 #pragma once
 #include <cstdint>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#include "GameUtils.h"
 #include "System.h"
 
-enum class CellType : uint8_t
-{
-    Null    = 0,
-    Sand    = 1,
-    Water   = 2
-};
 
-struct Cell
-{
-    CellType cellType;
-};
+
 
 class FallingSandsSystem : public System
 {
@@ -48,4 +41,5 @@ private:
     std::vector<Cell> backGrid;
 
     std::unordered_set<int32_t> activeCellsIndices;
+    std::unordered_map<CellType, CellMovement*> cellMovementMap;
 };

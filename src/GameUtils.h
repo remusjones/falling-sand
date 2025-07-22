@@ -6,7 +6,8 @@
 #pragma once
 #include <array>
 #include <cstdint>
-#include "systems/FallingSandsSystem.h"
+#include <random>
+#include <stdlib.h>
 
 enum Direction : uint8_t
 {
@@ -21,6 +22,68 @@ enum Direction : uint8_t
     DOWN_RIGHT  = DOWN | RIGHT,
 };
 
+enum class CellType : uint8_t
+{
+    Null    = 0,
+    Sand    = 1,
+    Water   = 2
+};
+
+struct Cell
+{
+    CellType cellType;
+};
+
+struct CellMovement
+{
+    virtual ~CellMovement() = default;
+    [[nodiscard]] virtual std::vector<Direction> GetMovementDirections() const = 0;
+};
+
+struct SandMovement final : CellMovement
+{
+    [[nodiscard]] std::vector<Direction> GetMovementDirections() const override
+    {
+        std::array<Direction, 3> directions = {
+            Direction::DOWN,
+            Direction::DOWN_LEFT,
+            Direction::DOWN_RIGHT
+        };
+
+        static thread_local std::mt19937 rng(std::random_device{}());
+
+        if (rng() % 2 == 0)
+            std::swap(directions[1], directions[2]);
+
+        return std::vector<Direction>{directions.begin(), directions.end()};
+    }
+};
+
+
+struct WaterMovement final : CellMovement
+{
+    [[nodiscard]] std::vector<Direction> GetMovementDirections() const  override
+    {
+        std::array<Direction, 5> directions = {
+            Direction::DOWN,
+            Direction::DOWN_LEFT,
+            Direction::DOWN_RIGHT,
+            Direction::LEFT,
+            Direction::RIGHT,
+        };
+
+        static thread_local std::mt19937 rng(std::random_device{}());
+
+        if (rng() % 2 == 0)
+        {
+            std::swap(directions[1], directions[2]);
+            std::swap(directions[3], directions[4]);
+        }
+
+        // Return as vector
+        return std::vector<Direction>{directions.begin(), directions.end()};
+    }
+};
 
 
 // todo: this doesn't have much use

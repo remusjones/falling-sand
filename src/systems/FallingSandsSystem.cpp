@@ -4,7 +4,7 @@
 #include "FallingSandsSystem.h"
 #include <algorithm>
 
-#include "GameUtils.h"
+#include "raylib.h"
 
 FallingSandsSystem::FallingSandsSystem(const std::string_view& name, const int32_t& worldWidth, const int32_t& worldHeight)
     : System(name), width(worldWidth), height(worldHeight), grid(worldWidth * worldHeight), backGrid(worldWidth * worldHeight)
@@ -14,6 +14,11 @@ FallingSandsSystem::FallingSandsSystem(const std::string_view& name, const int32
 
 void FallingSandsSystem::Init()
 {
+    static SandMovement sandMovement;
+    static WaterMovement waterMovement;
+
+    cellMovementMap[CellType::Sand] = &sandMovement;
+    cellMovementMap[CellType::Water] = &waterMovement;
 }
 
 void FallingSandsSystem::Update(const float& deltaTime)
@@ -23,90 +28,40 @@ void FallingSandsSystem::Update(const float& deltaTime)
 
     backGrid = grid;
 
-    auto trySwapCell = [&](const int32_t& targetIndex, const int32_t& fromIndex) {
-
+    auto trySwapCell = [&](const int32_t& targetIndex, const int32_t& fromIndex)
+    {
         Cell& cellFrom = backGrid[fromIndex];
-        Cell& cellTo = backGrid[targetIndex];
+        Cell& cellTo   = backGrid[targetIndex];
 
-        if (GameUtils::CanDisplace(cellFrom.cellType, cellTo.cellType))
+        if (!GameUtils::CanDisplace(cellFrom.cellType, cellTo.cellType))
+            return false;
+
+        for (int32_t index : GameUtils::GetNeighbouringCells(fromIndex, extents, 1))
         {
-            for (int32_t& index : GameUtils::GetNeighbouringCells(fromIndex, extents, 1))
-            {
-                newActiveCellsIndices.insert(index);
-            }
-
-            std::swap(cellFrom, cellTo);
-            return true;
+            newActiveCellsIndices.insert(index);
         }
 
-        return false;
+        std::swap(cellTo, cellFrom);
+
+        return true;
     };
+
 
     for (const int32_t& index : activeCellsIndices)
     {
         const Cell& cell = grid[index];
-        switch (cell.cellType)
+
+        if (cell.cellType == CellType::Null) continue;
+
+        std::vector<Direction> cellMovement = cellMovementMap[cell.cellType]->GetMovementDirections();
+
+        for (Direction currentDirection : cellMovement)
         {
-            case CellType::Sand:
+            int32_t neighborIdx;
+            if (GameUtils::GetNeighbourIndex(index, currentDirection, extents, neighborIdx))
             {
-                constexpr Direction validMovementDirection[] = {
-                    Direction::DOWN,
-                    Direction::DOWN_LEFT,
-                    Direction::DOWN_RIGHT
-                };
-
-                for (Direction currentDirection : validMovementDirection)
-                {
-                    int32_t neighborIdx;
-                    if (GameUtils::GetNeighbourIndex(index, currentDirection, extents, neighborIdx))
-                    {
-                        if (trySwapCell(neighborIdx, index))
-                            break;
-                    }
-                }
-
-                break;
+                if (trySwapCell(neighborIdx, index)){}
             }
-
-            case CellType::Water:
-            {
-                constexpr Direction baseDirections[] = {
-                    Direction::DOWN,
-                    Direction::DOWN_LEFT,
-                    Direction::DOWN_RIGHT
-                };
-
-                Direction validMovementDirection[5];
-
-                for (int i = 0; i < 3; ++i)
-                {
-                    validMovementDirection[i] = baseDirections[i];
-                }
-
-                if (rand() % 2 == 0)
-                {
-                    validMovementDirection[3] = Direction::LEFT;
-                    validMovementDirection[4] = Direction::RIGHT;
-                }
-                else
-                {
-                    validMovementDirection[3] = Direction::RIGHT;
-                    validMovementDirection[4] = Direction::LEFT;
-                }
-
-                for (const Direction& movementDirection: validMovementDirection)
-                {
-                    int32_t neighborIdx;
-                    if (GameUtils::GetNeighbourIndex(index, movementDirection, extents, neighborIdx))
-                    {
-                        if (trySwapCell(neighborIdx, index))
-                            break;
-                    }
-                }
-                break;
-            }
-
-            default: ;
         }
     }
 
@@ -120,6 +75,8 @@ void FallingSandsSystem::Shutdown()
 
 void FallingSandsSystem::ModifyCell(const int32_t& cellIndex, const CellType& cellType)
 {
+    if (backGrid[cellIndex].cellType != CellType::Null) return;
+
     grid[cellIndex].cellType = cellType;
     activeCellsIndices.insert(cellIndex);
 }
