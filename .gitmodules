@@ -8,6 +8,3 @@
 [submodule "vendored/rlImGui"]
 	path = vendored/rlImGui
 	url = https://github.com/raylib-extras/rlImGui.git
-[submodule "vendored/HelloECS"]
-	path = vendored/HelloECS
-	url = https://github.com/remusjones/HelloECS

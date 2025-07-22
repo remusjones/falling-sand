@@ -38,11 +38,6 @@ set(RLIMGUI_SOURCES
         rlImGui/imgui_impl_raylib.h
 )
 
-# hello ecs
-add_subdirectory(HelloECS)
-
-
-
 target_sources(rlimgui PUBLIC ${RLIMGUI_SOURCES})
 target_link_libraries(rlimgui PUBLIC raylib imgui)
-target_link_libraries(vendored INTERFACE raylib imgui rlimgui HelloECS)
+target_link_libraries(vendored INTERFACE raylib imgui rlimgui)
