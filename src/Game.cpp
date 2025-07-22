@@ -50,21 +50,6 @@ void Game::Setup()
     systemManager->Init();
 }
 
-Color GetCellTypeColor(const CellType& cellType)
-{
-    switch (cellType)
-    {
-        case CellType::Sand:
-        {
-            return CLITERAL(Color){ 225,191,146, 255 };
-        }
-        case CellType::Water:
-        {
-            return CLITERAL(Color){ 111, 122, 252, 255 };
-        }
-        default: return BLACK;
-    }
-}
 
 void Game::Update()
 {
@@ -77,10 +62,31 @@ void Game::Update()
         int mouseButtonInput = -1;
         if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) mouseButtonInput = 0;
         if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) mouseButtonInput = 1;
+        if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE)) mouseButtonInput = 2;
+
 
         if (mouseButtonInput != -1)
         {
-            CellType selectedCellType = mouseButtonInput > 0 ? CellType::Water : CellType::Sand;
+            CellType selectedCellType = CellType::Sand;
+            switch (mouseButtonInput)
+            {
+                case 0:
+                {
+                    selectedCellType = CellType::Sand;
+                    break;
+                }
+                case 1:
+                {
+                    selectedCellType = CellType::Water;
+                    break;
+                }
+                case 2:
+                {
+                    selectedCellType = CellType::Gas;
+                    break;
+                }
+                default: break;
+            }
             float cellWidth = static_cast<float>(windowSettings.windowWidth) /  static_cast<float>(fallingSandsSystem->GetWidth());
             float cellHeight = static_cast<float>(windowSettings.windowHeight) / static_cast<float>(fallingSandsSystem->GetHeight());
 
@@ -126,7 +132,7 @@ void Game::DrawSim()
 
     for (int i = 0; i < width * height; ++i)
     {
-        cellPixels[i] = GetCellTypeColor(grid[i].cellType);
+        cellPixels[i] = GameUtils::GetCellTypeColor(grid[i].cellType);
     }
 
     UpdateTexture(gridTexture, cellPixels.data());

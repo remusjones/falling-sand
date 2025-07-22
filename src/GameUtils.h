@@ -9,6 +9,8 @@
 #include <random>
 #include <stdlib.h>
 
+#include "raylib.h"
+
 enum Direction : uint8_t
 {
     UP          = 1 << 0,
@@ -26,13 +28,15 @@ enum class CellType : uint8_t
 {
     Null    = 0,
     Sand    = 1,
-    Water   = 2
+    Water   = 2,
+    Gas     = 3
 };
 
 struct Cell
 {
     CellType cellType;
 };
+
 
 struct CellMovement
 {
@@ -59,7 +63,6 @@ struct SandMovement final : CellMovement
     }
 };
 
-
 struct WaterMovement final : CellMovement
 {
     [[nodiscard]] std::vector<Direction> GetMovementDirections() const  override
@@ -78,6 +81,36 @@ struct WaterMovement final : CellMovement
         {
             std::swap(directions[1], directions[2]);
             std::swap(directions[3], directions[4]);
+        }
+
+        // Return as vector
+        return std::vector<Direction>{directions.begin(), directions.end()};
+    }
+};
+
+struct GasMovement final : CellMovement
+{
+    [[nodiscard]] std::vector<Direction> GetMovementDirections() const  override
+    {
+        std::array<Direction, 8> directions = {
+            Direction::UP,
+            Direction::UP_LEFT,
+            Direction::UP_RIGHT,
+            Direction::DOWN,
+            Direction::DOWN_LEFT,
+            Direction::DOWN_RIGHT,
+            Direction::LEFT,
+            Direction::RIGHT,
+        };
+
+        static thread_local std::mt19937 rng(std::random_device{}());
+
+        if (rng() % 2 == 0)
+        {
+            std::swap(directions[1], directions[2]);
+            std::swap(directions[4], directions[5]);
+            std::swap(directions[6], directions[7]);
+
         }
 
         // Return as vector
@@ -143,7 +176,7 @@ public:
         for (int dy = -distance; dy <= distance; ++dy)
         {
             const int y = originY + dy;
-            if (y >= extents.y) continue;
+            if (y >= extents.y || y <= 0) continue;
 
             for (int dx = -distance; dx <= distance; ++dx)
             {
@@ -168,9 +201,31 @@ public:
         const uint8_t DisplacementMask[] = {
             /* Null  */ 0,
             /* Sand  */ static_cast<uint8_t>(CellTypeBit(CellType::Null) | CellTypeBit(CellType::Water)),
-            /* Water */ static_cast<uint8_t>(CellTypeBit(CellType::Null))
+            /* Water */ static_cast<uint8_t>(CellTypeBit(CellType::Null)),
+            /* Gas */   static_cast<uint8_t>(CellTypeBit(CellType::Null) | CellTypeBit(CellType::Water))
         };
 
         return (DisplacementMask[static_cast<uint8_t>(from)] & CellTypeBit(to)) != 0;
     }
+
+    static Color GetCellTypeColor(const CellType& cellType)
+    {
+        switch (cellType)
+        {
+            case CellType::Sand:
+            {
+                return CLITERAL(Color){ 225,191,146, 255 };
+            }
+            case CellType::Water:
+            {
+                return CLITERAL(Color){ 111, 122, 252, 255 };
+            }
+            case CellType::Gas:
+            {
+                return CLITERAL(Color){ 0, 55, 55, 255 };
+            }
+            default: return BLACK;
+        }
+    }
+
 };

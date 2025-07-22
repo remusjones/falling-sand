@@ -16,9 +16,12 @@ void FallingSandsSystem::Init()
 {
     static SandMovement sandMovement;
     static WaterMovement waterMovement;
+    static GasMovement gasMovement;
 
     cellMovementMap[CellType::Sand] = &sandMovement;
     cellMovementMap[CellType::Water] = &waterMovement;
+    cellMovementMap[CellType::Gas] = &gasMovement;
+
 }
 
 void FallingSandsSystem::Update(const float& deltaTime)
