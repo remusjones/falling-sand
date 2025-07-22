@@ -26,88 +26,22 @@ enum Direction : uint8_t
 
 enum class CellType : uint8_t
 {
-    Null    = 0,
-    Sand    = 1,
-    Water   = 2,
-    Gas     = 3
+    Null        = 0,
+    Wall        = 1,
+    Sand        = 2,
+    Water       = 3,
+    Steam       = 4,
+    Fire        = 5,
+    Methane     = 6,
+
+    END
 };
 
 struct Cell
 {
     CellType cellType;
+    int32_t cellLifetime = -1;
 };
-
-
-struct CellMovement
-{
-    virtual ~CellMovement() = default;
-    [[nodiscard]] virtual std::vector<Direction> GetMovementDirections() const = 0;
-};
-
-struct SandMovement final : CellMovement
-{
-    [[nodiscard]] std::vector<Direction> GetMovementDirections() const override
-    {
-        std::array<Direction, 3> directions = {
-            Direction::DOWN,
-            Direction::DOWN_LEFT,
-            Direction::DOWN_RIGHT
-        };
-
-        static thread_local std::mt19937 rng(std::random_device{}());
-
-        if (rng() % 2 == 0)
-            std::swap(directions[1], directions[2]);
-
-        return std::vector<Direction>{directions.begin(), directions.end()};
-    }
-};
-
-struct WaterMovement final : CellMovement
-{
-    [[nodiscard]] std::vector<Direction> GetMovementDirections() const  override
-    {
-        std::array<Direction, 5> directions = {
-            Direction::DOWN,
-            Direction::DOWN_LEFT,
-            Direction::DOWN_RIGHT,
-            Direction::LEFT,
-            Direction::RIGHT,
-        };
-
-        static thread_local std::mt19937 rng(std::random_device{}());
-
-        if (rng() % 2 == 0)
-        {
-            std::swap(directions[1], directions[2]);
-            std::swap(directions[3], directions[4]);
-        }
-
-        // Return as vector
-        return std::vector<Direction>{directions.begin(), directions.end()};
-    }
-};
-
-struct GasMovement final : CellMovement
-{
-    [[nodiscard]] std::vector<Direction> GetMovementDirections() const  override
-    {
-        std::vector<Direction> directions = {
-            Direction::UP,
-            Direction::UP,
-            Direction::UP_LEFT,
-            Direction::UP_RIGHT,
-            Direction::LEFT,
-            Direction::RIGHT,
-            Direction::DOWN,
-        };
-
-        static thread_local std::mt19937 rng(std::random_device{}());
-        std::ranges::shuffle(directions, rng);
-        return directions;
-    }
-};
-
 
 // todo: this doesn't have much use
 struct Vector2i
@@ -166,7 +100,7 @@ public:
         for (int dy = -distance; dy <= distance; ++dy)
         {
             const int y = originY + dy;
-            if (y >= extents.y || y <= 0) continue;
+            if (y < 0 || y >= extents.y) continue;
 
             for (int dx = -distance; dx <= distance; ++dx)
             {
@@ -174,7 +108,10 @@ public:
                 if (dx == 0 && dy == 0) continue;
                 if (x >= extents.x) continue;
 
-                neighbours.push_back(y * extents.x + x);
+                if (int idx = y * extents.x + x; idx >= 0)
+                {
+                    neighbours.push_back(y * extents.x + x);
+                }
             }
         }
 
@@ -190,9 +127,12 @@ public:
     {
         const uint8_t DisplacementMask[] = {
             /* Null  */ 0,
-            /* Sand  */ static_cast<uint8_t>(CellTypeBit(CellType::Null) | CellTypeBit(CellType::Water)),
-            /* Water */ static_cast<uint8_t>(CellTypeBit(CellType::Null)),
-            /* Gas */   static_cast<uint8_t>(CellTypeBit(CellType::Null) | CellTypeBit(CellType::Water))
+            /* Wall  */ 0,
+            /* Sand  */     static_cast<uint8_t>(CellTypeBit(CellType::Null) | CellTypeBit(CellType::Water)),
+            /* Water */     static_cast<uint8_t>(CellTypeBit(CellType::Null) | CellTypeBit(CellType::Fire)),
+            /* Steam  */    static_cast<uint8_t>(CellTypeBit(CellType::Null) | CellTypeBit(CellType::Water)),
+            /* Fire */      static_cast<uint8_t>(CellTypeBit(CellType::Null) | CellTypeBit(CellType::Steam) | CellTypeBit(CellType::Water) | CellTypeBit(CellType::Methane)),
+            /* Methane */   static_cast<uint8_t>(CellTypeBit(CellType::Null) | CellTypeBit(CellType::Water) | CellTypeBit(CellType::Fire))
         };
 
         return (DisplacementMask[static_cast<uint8_t>(from)] & CellTypeBit(to)) != 0;
@@ -202,6 +142,10 @@ public:
     {
         switch (cellType)
         {
+            case CellType::Wall:
+            {
+                return CLITERAL(Color){ 55, 55, 55, 255 };
+            }
             case CellType::Sand:
             {
                 return CLITERAL(Color){ 225,191,146, 255 };
@@ -210,7 +154,15 @@ public:
             {
                 return CLITERAL(Color){ 111, 122, 252, 255 };
             }
-            case CellType::Gas:
+            case CellType::Steam:
+            {
+                return CLITERAL(Color){ 0, 0, 55, 255 };
+            }
+            case CellType::Fire:
+            {
+                return RED;
+            }
+            case CellType::Methane:
             {
                 return CLITERAL(Color){ 0, 55, 55, 255 };
             }

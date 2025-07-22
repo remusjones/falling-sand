@@ -12,7 +12,7 @@
 #include "System.h"
 
 
-
+struct CellBehaviour;
 
 class FallingSandsSystem : public System
 {
@@ -41,5 +41,5 @@ private:
     std::vector<Cell> backGrid;
 
     std::unordered_set<int32_t> activeCellsIndices;
-    std::unordered_map<CellType, CellMovement*> cellMovementMap;
+    std::unordered_map<CellType, CellBehaviour*> cellBehaviourMap;
 };

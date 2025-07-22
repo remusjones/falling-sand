@@ -4,6 +4,8 @@
 #include "FallingSandsSystem.h"
 #include <algorithm>
 
+#include "CellBehaviours.h"
+
 FallingSandsSystem::FallingSandsSystem(const std::string_view& name, const int32_t& worldWidth, const int32_t& worldHeight)
     : System(name), width(worldWidth), height(worldHeight), grid(worldWidth * worldHeight), backGrid(worldWidth * worldHeight)
 {
@@ -12,13 +14,21 @@ FallingSandsSystem::FallingSandsSystem(const std::string_view& name, const int32
 
 void FallingSandsSystem::Init()
 {
-    static SandMovement sandMovement;
-    static WaterMovement waterMovement;
-    static GasMovement gasMovement;
+    static CellBehaviour nullBehaviour;
+    static PowderBehaviour sandBehaviour;
+    static LiquidBehaviour waterBehaviour;
+    static GasBehaviour gasBehaviour;
+    static FireBehaviour fireBehaviour;
+    static MethaneBehaviour methaneBehaviour;
 
-    cellMovementMap[CellType::Sand] = &sandMovement;
-    cellMovementMap[CellType::Water] = &waterMovement;
-    cellMovementMap[CellType::Gas] = &gasMovement;
+
+    cellBehaviourMap[CellType::Null]    =   &nullBehaviour;
+    cellBehaviourMap[CellType::Wall]    =   &nullBehaviour;
+    cellBehaviourMap[CellType::Sand]    =   &sandBehaviour;
+    cellBehaviourMap[CellType::Water]   =   &waterBehaviour;
+    cellBehaviourMap[CellType::Steam]   =   &gasBehaviour;
+    cellBehaviourMap[CellType::Fire]    =   &fireBehaviour;
+    cellBehaviourMap[CellType::Methane] =   &methaneBehaviour;
 
 }
 
@@ -34,7 +44,7 @@ void FallingSandsSystem::Update(const float& deltaTime)
         Cell& cellFrom = backGrid[fromIndex];
         Cell& cellTo   = backGrid[targetIndex];
 
-        if (!GameUtils::CanDisplace(cellFrom.cellType, cellTo.cellType))
+        if (!GameUtils::CanDisplace(cellFrom.cellType, cellTo.cellType) || cellTo.cellType == cellFrom.cellType)
             return false;
 
         for (int32_t index : GameUtils::GetNeighbouringCells(fromIndex, extents, 1))
@@ -42,8 +52,21 @@ void FallingSandsSystem::Update(const float& deltaTime)
             newActiveCellsIndices.insert(index);
         }
 
+        const CellType toNewType = cellBehaviourMap[cellFrom.cellType]->Mix(cellFrom.cellType, cellTo.cellType);
+        const CellType fromNewType = cellBehaviourMap[cellTo.cellType]->Mix(cellTo.cellType, cellFrom.cellType);
+
         std::swap(cellTo, cellFrom);
 
+        if (cellTo.cellType != toNewType)
+        {
+            cellTo.cellType = toNewType;
+            cellTo.cellLifetime = cellBehaviourMap[toNewType]->GetLifetime();
+        }
+        if (cellFrom.cellType != fromNewType)
+        {
+            cellFrom.cellType = fromNewType;
+            cellFrom.cellLifetime = cellBehaviourMap[fromNewType]->GetLifetime();
+        }
         return true;
     };
 
@@ -53,7 +76,20 @@ void FallingSandsSystem::Update(const float& deltaTime)
 
         if (cell.cellType == CellType::Null) continue;
 
-        std::vector<Direction> cellMovement = cellMovementMap[cell.cellType]->GetMovementDirections();
+
+        if (cell.cellLifetime >= 0)
+        {
+            if (grid[index].cellLifetime == 0)
+            {
+                backGrid[index].cellType = CellType::Null;
+
+            }else
+            {
+                backGrid[index].cellLifetime--;
+            }
+            newActiveCellsIndices.insert(index);
+        }
+        std::vector<Direction> cellMovement = cellBehaviourMap[cell.cellType]->GetMovementDirections();
 
         for (Direction currentDirection : cellMovement)
         {
@@ -63,6 +99,8 @@ void FallingSandsSystem::Update(const float& deltaTime)
                 if (trySwapCell(neighborIdx, index)){ break; }
             }
         }
+
+
     }
 
     std::swap(backGrid, grid);
@@ -75,9 +113,8 @@ void FallingSandsSystem::Shutdown()
 
 void FallingSandsSystem::ModifyCell(const int32_t& cellIndex, const CellType& cellType)
 {
-    if (backGrid[cellIndex].cellType != CellType::Null) return;
-
     grid[cellIndex].cellType = cellType;
+    grid[cellIndex].cellLifetime = cellBehaviourMap[cellType]->GetLifetime();
     activeCellsIndices.insert(cellIndex);
 }
 

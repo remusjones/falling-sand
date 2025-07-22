@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "GameUtils.h"
 #include "raylib.h"
 #include "systems/SystemManager.h"
 
@@ -25,6 +26,9 @@ public:
 
 private:
     void Setup();
+
+    void DrawUI();
+
     void Update();
     void Shutdown();
 
@@ -34,7 +38,9 @@ private:
     WindowSettings windowSettings;
     std::unique_ptr<SystemManager> systemManager;
     FallingSandsSystem* fallingSandsSystem;
+    int32_t reservedUIHeight = 80;
 
+    CellType selectedCellType = CellType::Sand;
     // Rendering
     std::vector<Color> cellPixels;
     Texture2D gridTexture;

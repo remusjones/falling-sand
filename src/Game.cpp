@@ -29,10 +29,10 @@ void Game::Setup()
 
     systemManager = std::make_unique<SystemManager>();
 
-    int32_t worldSizeX = 800/3;
-    int32_t worldSizeY = 448/3;
+    int32_t worldSizeX = windowSettings.windowWidth / 3;
+    int32_t worldSizeY = (windowSettings.windowHeight - reservedUIHeight) / 3;
 
-   cellPixels = std::vector<Color>(worldSizeX * worldSizeY);
+    cellPixels = std::vector<Color>(worldSizeX * worldSizeY);
 
     Image image = {
         .data = cellPixels.data(),
@@ -44,56 +44,79 @@ void Game::Setup()
 
     gridTexture = LoadTextureFromImage(image);
     shader = LoadShader(0, "resources/shaders/fallingSand_fs.glsl");
-
+    SetTargetFPS(120);
     fallingSandsSystem = systemManager->RegisterSystem<FallingSandsSystem>("falling sands", worldSizeX, worldSizeY);
 
     systemManager->Init();
 }
 
+void Game::DrawUI()
+{
+    ImGui::SetNextWindowPos(ImVec2(0, static_cast<float>(windowSettings.windowHeight) - 80), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(static_cast<float>(windowSettings.windowWidth), 80), ImGuiCond_Always);
 
+    ImGui::Begin("Palette", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar);
+
+    ImGui::Text("Select Cell Type:");
+
+    auto DrawSelectableButton = [&](const char* label, CellType type)
+    {
+        bool isSelected = (selectedCellType == type);
+
+        if (isSelected)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.4f, 0.7f, 1.0f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.5f, 0.8f, 1.0f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0.3f, 0.6f, 0.9f, 1.0f));
+        }
+
+        if (ImGui::Button(label))
+        {
+            selectedCellType = type;
+        }
+
+        if (isSelected)
+        {
+            ImGui::PopStyleColor(3);
+        }
+
+        ImGui::SameLine();
+    };
+
+    DrawSelectableButton("Wall",    CellType::Wall);
+    DrawSelectableButton("Sand",    CellType::Sand);
+    DrawSelectableButton("Water",   CellType::Water);
+    DrawSelectableButton("Fire",    CellType::Fire);
+    DrawSelectableButton("Steam",   CellType::Steam);
+    DrawSelectableButton("Methane", CellType::Methane);
+
+    ImGui::NewLine();
+    ImGui::End();
+}
 void Game::Update()
 {
-    int targetFPS = 100;
     while (!WindowShouldClose())
     {
-        Vector2 mousePos = GetMousePosition();
-
-        // todo: Move to imgui pallet
-        int mouseButtonInput = -1;
-        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) mouseButtonInput = 0;
-        if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) mouseButtonInput = 1;
-        if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE)) mouseButtonInput = 2;
-
-
-        if (mouseButtonInput != -1)
+        const Vector2 mousePos = GetMousePosition();
+        if (IsMouseButtonDown(MOUSE_BUTTON_LEFT))
         {
-            CellType selectedCellType = CellType::Sand;
-            switch (mouseButtonInput)
+            const int gridWidth = fallingSandsSystem->GetWidth();
+            const int gridHeight = fallingSandsSystem->GetHeight();
+            float cellWidth = static_cast<float>(windowSettings.windowWidth) / static_cast<float>(gridWidth);
+            float cellHeight = static_cast<float>(windowSettings.windowHeight - reservedUIHeight) / static_cast<float>(gridHeight);
+
+            int cellX = static_cast<int>(mousePos.x / cellWidth);
+            int cellY = static_cast<int>(mousePos.y / cellHeight);
+
+            if (cellX >= 0 && cellX < gridWidth && cellY >= 0 && cellY < gridHeight)
             {
-                case 0:
+                int index = cellY * gridWidth + cellX;
+                for (auto idx : GameUtils::GetNeighbouringCells(index, {gridWidth, gridHeight}, 1))
                 {
-                    selectedCellType = CellType::Sand;
-                    break;
+                    fallingSandsSystem->ModifyCell(idx, selectedCellType);
                 }
-                case 1:
-                {
-                    selectedCellType = CellType::Water;
-                    break;
-                }
-                case 2:
-                {
-                    selectedCellType = CellType::Gas;
-                    break;
-                }
-                default: break;
+                fallingSandsSystem->ModifyCell(index, selectedCellType);
             }
-            float cellWidth = static_cast<float>(windowSettings.windowWidth) /  static_cast<float>(fallingSandsSystem->GetWidth());
-            float cellHeight = static_cast<float>(windowSettings.windowHeight) / static_cast<float>(fallingSandsSystem->GetHeight());
-
-            int cellX = fallingSandsSystem->GetClampedWidth(static_cast<int>(mousePos.x / cellWidth));
-            int cellY = fallingSandsSystem->GetClampedHeight(static_cast<int>(mousePos.y / cellHeight));
-
-            fallingSandsSystem->ModifyCell(cellY * fallingSandsSystem->GetWidth() + cellX, selectedCellType);
         }
 
         systemManager->Update(GetFrameTime());
@@ -101,6 +124,7 @@ void Game::Update()
         BeginDrawing();
         rlImGuiBegin();
 
+        DrawUI();
         ClearBackground(RAYWHITE);
 
         DrawSim();
@@ -141,11 +165,14 @@ void Game::DrawSim()
     SetShaderValue(shader, GetShaderLocation(shader, "resolution"), resolution, SHADER_UNIFORM_VEC2);
     SetShaderValueTexture(shader, GetShaderLocation(shader, "cellTex"), gridTexture);
 
-    Rectangle src = { 0, 0, static_cast<float>(width),              static_cast<float>(height) };
-    Rectangle dst = { 0, 0, static_cast<float>(GetScreenWidth()),   static_cast<float>(GetScreenHeight()) };
-    Vector2 origin = { 0, 0 };
-
-    DrawTexturePro(gridTexture, src, dst, origin, 0.0f, WHITE);
+    Rectangle src = { 0, 0, static_cast<float>(width), static_cast<float>(height) };
+    Rectangle dst = {
+        0,
+        0,
+        static_cast<float>(GetScreenWidth()),
+        static_cast<float>(GetScreenHeight() - reservedUIHeight)
+    };
+    DrawTexturePro(gridTexture, src, dst, { 0, 0 }, 0.0f, WHITE);
 
     EndShaderMode();
 }
