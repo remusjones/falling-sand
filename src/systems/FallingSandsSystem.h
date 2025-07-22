@@ -4,7 +4,7 @@
 
 #pragma once
 #include <cstdint>
-#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "System.h"
@@ -19,7 +19,6 @@ enum class CellType : uint8_t
 struct Cell
 {
     CellType cellType;
-    bool isDirty;
 };
 
 class FallingSandsSystem : public System
@@ -30,6 +29,8 @@ public:
     void Init() override;
     void Update(const float& deltaTime) override;
     void Shutdown() override;
+
+    void ModifyCell(const int32_t& cellIndex, const CellType& cellType);
 
     std::vector<Cell>& GetGrid() { return grid; }
     [[nodiscard]] int32_t GetWidth() const { return width; }
@@ -42,6 +43,9 @@ public:
 private:
     int32_t width;
     int32_t height;
+
     std::vector<Cell> grid;
     std::vector<Cell> backGrid;
+
+    std::unordered_set<int32_t> activeCellsIndices;
 };

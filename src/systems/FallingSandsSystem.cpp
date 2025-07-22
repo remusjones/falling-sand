@@ -19,94 +19,109 @@ void FallingSandsSystem::Init()
 void FallingSandsSystem::Update(const float& deltaTime)
 {
     const Vector2i extents = {width, height};
+    std::unordered_set<int32_t> newActiveCellsIndices(width * height);
+
     backGrid = grid;
 
-
-    auto trySwapCell = [&](const int32_t& targetIndex, const int& fromIndex)  {
+    auto trySwapCell = [&](const int32_t& targetIndex, const int32_t& fromIndex) {
 
         Cell& cellFrom = backGrid[fromIndex];
         Cell& cellTo = backGrid[targetIndex];
 
-        if (cellTo.isDirty || cellFrom.isDirty) return false;
-
         if (GameUtils::CanDisplace(cellFrom.cellType, cellTo.cellType))
         {
-            std::swap(cellFrom, cellTo);
-            cellTo.isDirty = true;
-            cellFrom.isDirty = true;
+            for (int32_t& index : GameUtils::GetNeighbouringCells(fromIndex, extents, 1))
+            {
+                newActiveCellsIndices.insert(index);
+            }
 
+            std::swap(cellFrom, cellTo);
             return true;
         }
+
         return false;
     };
 
-    for (int y = height - 1; y >= 0; y--)
+    for (const int32_t& index : activeCellsIndices)
     {
-        for (int x = 0; x < width; x++)
+        const Cell& cell = grid[index];
+        switch (cell.cellType)
         {
-            int32_t currentCellIndex = y * width + x;
-            Cell& cell = grid[currentCellIndex];
-            backGrid[currentCellIndex].isDirty = false;
-
-            switch (cell.cellType)
+            case CellType::Sand:
             {
-                case CellType::Sand:
+                constexpr Direction validMovementDirection[] = {
+                    Direction::DOWN,
+                    Direction::DOWN_LEFT,
+                    Direction::DOWN_RIGHT
+                };
+
+                for (Direction currentDirection : validMovementDirection)
                 {
-                    constexpr Direction validMovementDirection[] = {
-                        Direction::DOWN,
-                        Direction::DOWN_LEFT,
-                        Direction::DOWN_RIGHT
-                    };
-
-                    for (Direction currentDirection : validMovementDirection)
+                    int32_t neighborIdx;
+                    if (GameUtils::GetNeighbourIndex(index, currentDirection, extents, neighborIdx))
                     {
-                        int32_t neighborIdx;
-                        if (GameUtils::GetNeighbourIndex(currentCellIndex, currentDirection, extents, neighborIdx))
-                        {
-                            if (trySwapCell(neighborIdx, currentCellIndex))
-                            {
-                                break;
-                            }
-                        }
+                        if (trySwapCell(neighborIdx, index))
+                            break;
                     }
-
-                    break;
                 }
 
-                case CellType::Water:
-                {
-                    constexpr Direction validMovementDirection[] = {
-                        Direction::DOWN,
-                        Direction::DOWN_LEFT,
-                        Direction::DOWN_RIGHT,
-                        Direction::RIGHT,
-                        Direction::LEFT,
-                    };
-
-                    for (Direction currentDirection : validMovementDirection)
-                    {
-                        int32_t neighborIdx;
-                        if (GameUtils::GetNeighbourIndex(currentCellIndex, currentDirection, extents, neighborIdx))
-                        {
-                            if (trySwapCell(neighborIdx, currentCellIndex))
-                            {
-                                break;
-                            }
-                        }
-                    }
-
-                    break;
-                }
-                default: ;
+                break;
             }
+
+            case CellType::Water:
+            {
+                constexpr Direction baseDirections[] = {
+                    Direction::DOWN,
+                    Direction::DOWN_LEFT,
+                    Direction::DOWN_RIGHT
+                };
+
+                Direction validMovementDirection[5];
+
+                for (int i = 0; i < 3; ++i)
+                {
+                    validMovementDirection[i] = baseDirections[i];
+                }
+
+                if (rand() % 2 == 0)
+                {
+                    validMovementDirection[3] = Direction::LEFT;
+                    validMovementDirection[4] = Direction::RIGHT;
+                }
+                else
+                {
+                    validMovementDirection[3] = Direction::RIGHT;
+                    validMovementDirection[4] = Direction::LEFT;
+                }
+
+                for (const Direction& movementDirection: validMovementDirection)
+                {
+                    int32_t neighborIdx;
+                    if (GameUtils::GetNeighbourIndex(index, movementDirection, extents, neighborIdx))
+                    {
+                        if (trySwapCell(neighborIdx, index))
+                            break;
+                    }
+                }
+                break;
+            }
+
+            default: ;
         }
     }
 
     std::swap(backGrid, grid);
+    activeCellsIndices = std::move(newActiveCellsIndices);
 }
 
 void FallingSandsSystem::Shutdown()
 {
+}
+
+void FallingSandsSystem::ModifyCell(const int32_t& cellIndex, const CellType& cellType)
+{
+    grid[cellIndex].cellType = cellType;
+    activeCellsIndices.insert(cellIndex);
 }
 
 int32_t FallingSandsSystem::GetClampedWidth(const int32_t& targetWidth) const

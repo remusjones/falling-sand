@@ -68,6 +68,7 @@ Color GetCellTypeColor(const CellType& cellType)
 
 void Game::Update()
 {
+    int targetFPS = 100;
     while (!WindowShouldClose())
     {
         Vector2 mousePos = GetMousePosition();
@@ -86,8 +87,7 @@ void Game::Update()
             int cellX = fallingSandsSystem->GetClampedWidth(static_cast<int>(mousePos.x / cellWidth));
             int cellY = fallingSandsSystem->GetClampedHeight(static_cast<int>(mousePos.y / cellHeight));
 
-            auto& grid = fallingSandsSystem->GetGrid();
-            grid[cellY * fallingSandsSystem->GetWidth() + cellX].cellType = selectedCellType;
+            fallingSandsSystem->ModifyCell(cellY * fallingSandsSystem->GetWidth() + cellX, selectedCellType);
         }
 
         systemManager->Update(GetFrameTime());

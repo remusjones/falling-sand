@@ -4,6 +4,7 @@
 
 
 #pragma once
+#include <array>
 #include <cstdint>
 #include "systems/FallingSandsSystem.h"
 
@@ -20,6 +21,8 @@ enum Direction : uint8_t
     DOWN_RIGHT  = DOWN | RIGHT,
 };
 
+
+
 // todo: this doesn't have much use
 struct Vector2i
 {
@@ -30,14 +33,21 @@ struct Vector2i
 class GameUtils
 {
 public:
+
     static Vector2i GetDirection(const Direction& direction)
     {
-        Vector2i result{0, 0};
-        if (direction & UP)        result.y -= 1;
-        if (direction & DOWN)      result.y += 1;
-        if (direction & LEFT)      result.x -= 1;
-        if (direction & RIGHT)     result.x += 1;
-        return result;
+        switch (direction)
+        {
+            case UP: return {0, -1};
+            case DOWN: return {0, 1};
+            case LEFT: return {-1, 0};
+            case RIGHT: return {1, 0};
+            case UP_LEFT: return {-1, -1};
+            case UP_RIGHT: return {1, -1};
+            case DOWN_LEFT: return {-1, 1};
+            case DOWN_RIGHT: return {1, 1};
+            default: return {0, 0}; // fallback
+        }
     }
 
     static bool GetNeighbourIndex(const int32_t& originIndex, const Direction& direction, const Vector2i& extents, int32_t& outIndex)
@@ -57,6 +67,32 @@ public:
 
         outIndex = y * extents.x + x;
         return true;
+    }
+
+    static std::vector<int32_t> GetNeighbouringCells(int32_t originIndex, const Vector2i& extents, int32_t distance = 1)
+    {
+        std::vector<int32_t> neighbours;
+        neighbours.reserve((2 * distance + 1) * (2 * distance + 1) - 1); // exclude center
+
+        const int originX = originIndex % extents.x;
+        const int originY = originIndex / extents.x;
+
+        for (int dy = -distance; dy <= distance; ++dy)
+        {
+            const int y = originY + dy;
+            if (y >= extents.y) continue;
+
+            for (int dx = -distance; dx <= distance; ++dx)
+            {
+                const int x = originX + dx;
+                if (dx == 0 && dy == 0) continue;
+                if (x >= extents.x) continue;
+
+                neighbours.push_back(y * extents.x + x);
+            }
+        }
+
+        return neighbours;
     }
 
     static uint8_t CellTypeBit(const CellType& type)
