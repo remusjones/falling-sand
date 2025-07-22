@@ -4,8 +4,6 @@
 #include "FallingSandsSystem.h"
 #include <algorithm>
 
-#include "raylib.h"
-
 FallingSandsSystem::FallingSandsSystem(const std::string_view& name, const int32_t& worldWidth, const int32_t& worldHeight)
     : System(name), width(worldWidth), height(worldHeight), grid(worldWidth * worldHeight), backGrid(worldWidth * worldHeight)
 {
@@ -49,7 +47,6 @@ void FallingSandsSystem::Update(const float& deltaTime)
         return true;
     };
 
-
     for (const int32_t& index : activeCellsIndices)
     {
         const Cell& cell = grid[index];
@@ -63,7 +60,7 @@ void FallingSandsSystem::Update(const float& deltaTime)
             int32_t neighborIdx;
             if (GameUtils::GetNeighbourIndex(index, currentDirection, extents, neighborIdx))
             {
-                if (trySwapCell(neighborIdx, index)){}
+                if (trySwapCell(neighborIdx, index)){ break; }
             }
         }
     }

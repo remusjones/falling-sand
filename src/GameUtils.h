@@ -4,10 +4,10 @@
 
 
 #pragma once
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <random>
-#include <stdlib.h>
 
 #include "raylib.h"
 
@@ -92,29 +92,19 @@ struct GasMovement final : CellMovement
 {
     [[nodiscard]] std::vector<Direction> GetMovementDirections() const  override
     {
-        std::array<Direction, 8> directions = {
+        std::vector<Direction> directions = {
+            Direction::UP,
             Direction::UP,
             Direction::UP_LEFT,
             Direction::UP_RIGHT,
-            Direction::DOWN,
-            Direction::DOWN_LEFT,
-            Direction::DOWN_RIGHT,
             Direction::LEFT,
             Direction::RIGHT,
+            Direction::DOWN,
         };
 
         static thread_local std::mt19937 rng(std::random_device{}());
-
-        if (rng() % 2 == 0)
-        {
-            std::swap(directions[1], directions[2]);
-            std::swap(directions[4], directions[5]);
-            std::swap(directions[6], directions[7]);
-
-        }
-
-        // Return as vector
-        return std::vector<Direction>{directions.begin(), directions.end()};
+        std::ranges::shuffle(directions, rng);
+        return directions;
     }
 };
 
