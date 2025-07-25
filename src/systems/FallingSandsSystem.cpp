@@ -3,8 +3,7 @@
 //
 #include "FallingSandsSystem.h"
 #include <algorithm>
-
-#include "CellBehaviours.h"
+#include <memory>
 
 FallingSandsSystem::FallingSandsSystem(const std::string_view& name, const int32_t& worldWidth, const int32_t& worldHeight)
     : System(name), width(worldWidth), height(worldHeight), grid(worldWidth * worldHeight), backGrid(worldWidth * worldHeight)
@@ -14,22 +13,13 @@ FallingSandsSystem::FallingSandsSystem(const std::string_view& name, const int32
 
 void FallingSandsSystem::Init()
 {
-    static CellBehaviour nullBehaviour;
-    static PowderBehaviour sandBehaviour;
-    static LiquidBehaviour waterBehaviour;
-    static GasBehaviour gasBehaviour;
-    static FireBehaviour fireBehaviour;
-    static MethaneBehaviour methaneBehaviour;
-
-
-    cellBehaviourMap[CellType::Null]    =   &nullBehaviour;
-    cellBehaviourMap[CellType::Wall]    =   &nullBehaviour;
-    cellBehaviourMap[CellType::Sand]    =   &sandBehaviour;
-    cellBehaviourMap[CellType::Water]   =   &waterBehaviour;
-    cellBehaviourMap[CellType::Steam]   =   &gasBehaviour;
-    cellBehaviourMap[CellType::Fire]    =   &fireBehaviour;
-    cellBehaviourMap[CellType::Methane] =   &methaneBehaviour;
-
+    cellBehaviourMap[CellType::Null]    = std::make_unique<CellBehaviour>();
+    cellBehaviourMap[CellType::Wall]    = std::make_unique<CellBehaviour>();
+    cellBehaviourMap[CellType::Sand]    = std::make_unique<PowderBehaviour>();
+    cellBehaviourMap[CellType::Water]   = std::make_unique<LiquidBehaviour>();
+    cellBehaviourMap[CellType::Steam]   = std::make_unique<GasBehaviour>();
+    cellBehaviourMap[CellType::Fire]    = std::make_unique<FireBehaviour>();
+    cellBehaviourMap[CellType::Methane] = std::make_unique<MethaneBehaviour>();
 }
 
 void FallingSandsSystem::Update(const float& deltaTime)

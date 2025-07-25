@@ -3,16 +3,15 @@
 //
 
 #pragma once
-#include <cstdint>
+#include <memory>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#include "CellBehaviours.h"
 #include "GameUtils.h"
 #include "System.h"
 
-
-struct CellBehaviour;
 
 class FallingSandsSystem : public System
 {
@@ -32,7 +31,6 @@ public:
     [[nodiscard]] int32_t GetClampedWidth(const int32_t& targetWidth) const;
     [[nodiscard]] int32_t GetClampedHeight(const int32_t& targetHeight) const;
 
-
 private:
     int32_t width;
     int32_t height;
@@ -41,5 +39,5 @@ private:
     std::vector<Cell> backGrid;
 
     std::unordered_set<int32_t> activeCellsIndices;
-    std::unordered_map<CellType, CellBehaviour*> cellBehaviourMap;
+    std::unordered_map<CellType, std::unique_ptr<CellBehaviour>> cellBehaviourMap;
 };
