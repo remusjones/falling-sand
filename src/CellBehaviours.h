@@ -4,6 +4,7 @@
 
 
 #pragma once
+#include <algorithm>
 #include "GameUtils.h"
 
 struct CellBehaviour

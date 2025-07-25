@@ -22,6 +22,7 @@ public:
     void Update(const float& deltaTime) override;
     void Shutdown() override;
 
+    void Reset();
     void ModifyCell(const int32_t& cellIndex, const CellType& cellType);
 
     std::vector<Cell>& GetGrid() { return grid; }

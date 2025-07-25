@@ -51,11 +51,13 @@ void FallingSandsSystem::Update(const float& deltaTime)
         {
             cellTo.cellType = toNewType;
             cellTo.cellLifetime = cellBehaviourMap[toNewType]->GetLifetime();
+            cellTo.cellMaxLifetime = cellTo.cellLifetime;
         }
         if (cellFrom.cellType != fromNewType)
         {
             cellFrom.cellType = fromNewType;
             cellFrom.cellLifetime = cellBehaviourMap[fromNewType]->GetLifetime();
+            cellFrom.cellMaxLifetime = cellTo.cellLifetime;
         }
         return true;
     };
@@ -72,7 +74,6 @@ void FallingSandsSystem::Update(const float& deltaTime)
             if (grid[index].cellLifetime == 0)
             {
                 backGrid[index].cellType = CellType::Null;
-
             }else
             {
                 backGrid[index].cellLifetime--;
@@ -101,10 +102,19 @@ void FallingSandsSystem::Shutdown()
 {
 }
 
+void FallingSandsSystem::Reset()
+{
+    grid = std::vector<Cell>(width * height);
+    backGrid = std::vector<Cell>(width * height);
+}
+
 void FallingSandsSystem::ModifyCell(const int32_t& cellIndex, const CellType& cellType)
 {
     grid[cellIndex].cellType = cellType;
     grid[cellIndex].cellLifetime = cellBehaviourMap[cellType]->GetLifetime();
+    grid[cellIndex].cellMaxLifetime = grid[cellIndex].cellLifetime;
+
+
     activeCellsIndices.insert(cellIndex);
 }
 

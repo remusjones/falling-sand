@@ -83,12 +83,19 @@ void Game::DrawUI()
         ImGui::SameLine();
     };
 
+    if (ImGui::Button("Reset"))
+    {
+        fallingSandsSystem->Reset();
+    }
+
     DrawSelectableButton("Wall",    CellType::Wall);
     DrawSelectableButton("Sand",    CellType::Sand);
     DrawSelectableButton("Water",   CellType::Water);
     DrawSelectableButton("Fire",    CellType::Fire);
     DrawSelectableButton("Steam",   CellType::Steam);
     DrawSelectableButton("Methane", CellType::Methane);
+
+
 
     ImGui::NewLine();
     ImGui::End();
@@ -156,7 +163,7 @@ void Game::DrawSim()
 
     for (int i = 0; i < width * height; ++i)
     {
-        cellPixels[i] = GameUtils::GetCellTypeColor(grid[i].cellType);
+        cellPixels[i] = GameUtils::GetCellTypeColor(grid[i]);
     }
 
     UpdateTexture(gridTexture, cellPixels.data());

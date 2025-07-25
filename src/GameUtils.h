@@ -4,8 +4,6 @@
 
 
 #pragma once
-#include <algorithm>
-#include <array>
 #include <cstdint>
 #include <random>
 
@@ -41,6 +39,7 @@ struct Cell
 {
     CellType cellType;
     int32_t cellLifetime = -1;
+    int32_t cellMaxLifetime = -1;
 };
 
 // todo: this doesn't have much use
@@ -138,9 +137,19 @@ public:
         return (DisplacementMask[static_cast<uint8_t>(from)] & CellTypeBit(to)) != 0;
     }
 
-    static Color GetCellTypeColor(const CellType& cellType)
+    static Color Lerp(const Color& a, const Color& b, const float& t)
     {
-        switch (cellType)
+        Color result;
+        result.r = static_cast<unsigned char>(a.r + (b.r - a.r) * t);
+        result.g = static_cast<unsigned char>(a.g + (b.g - a.g) * t);
+        result.b = static_cast<unsigned char>(a.b + (b.b - a.b) * t);
+        result.a = static_cast<unsigned char>(a.a + (b.a - a.a) * t);
+        return result;
+    }
+
+    static Color GetCellTypeColor(const Cell& cell)
+    {
+        switch (cell.cellType)
         {
             case CellType::Wall:
             {
@@ -160,7 +169,7 @@ public:
             }
             case CellType::Fire:
             {
-                return RED;
+                return Lerp({255,0, 0, 255}, {255,154, 0, 255}, static_cast<float>(cell.cellLifetime) / cell.cellMaxLifetime);
             }
             case CellType::Methane:
             {
